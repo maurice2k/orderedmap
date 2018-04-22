@@ -5,6 +5,7 @@ package orderedmap
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/ghodss/yaml"
 )
 
 type KeyType string
@@ -162,4 +163,35 @@ func (kv KV) MarshalJSON() ([]byte, error) {
 
 	buffer.WriteString("}")
 	return buffer.Bytes(), nil
+}
+
+// MarshalYAML Marshalls the ordered map to yaml
+func (om *OrderedMap) MarshalYAML() ([]byte, error) {
+	jsonBytes, err := om.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+
+	yamlBytes, err := yaml.JSONToYAML(jsonBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return yamlBytes, err
+}
+
+// MarshalYAML Marshals the ordered map to yaml
+func (kv KV) MarshalYAML() ([]byte, error) {
+	jsonBytes, err := kv.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+
+	yamlBytes, err := yaml.JSONToYAML(jsonBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return yamlBytes, err
+
 }
