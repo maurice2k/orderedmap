@@ -1,42 +1,50 @@
-orderedmap
-==========
+# orderedmap
 
-Orderedmap works like a `map[string]interface{}` but preserves the order in which keys have been added.
-It has been optimized performance-wise while still keeping memory usage at a minimum. All operations have *O(1)* time complexity.
+`orderedmap` is a small Go package for JSON-friendly maps that preserve insertion order.
+It behaves like a `map[string]any` for lookup and update, while iteration and JSON output follow the order in which keys were first inserted.
 
-Orderedmap is useful for generating human-readable JSON and can be easily marshalled using golang's `encoding/json` package.
+It is useful when generating stable, human-readable JSON with Go's `encoding/json` package.
+
+## Install
+
+```sh
+go get github.com/maurice2k/orderedmap
+```
+
+## Complexity
+
+- `Set`, `Get`, `Lookup`, `Exists`, `Delete`, and `Len` are O(1).
+- `Keys`, `Entries`, `All`, `Append`, and JSON marshal/unmarshal are O(n).
+- Deleting an entry preserves the relative order of the remaining entries. Re-inserting the same key appends it at the end.
 
 ## Full example code
-```golang
+
+```go
 package main
 
-import "fmt"
-import "encoding/json"
+import (
+    "encoding/json"
+    "fmt"
 
-import om "github.com/maurice2k/orderedmap"
+    "github.com/maurice2k/orderedmap"
+)
 
 func main() {
-    status := om.NewOrderedMap(  // initializes a new odered map
-        &om.KV{"http", om.NewOrderedMap(  // key-value with sub ordered map as value
-            &om.KV{"code", 200},  // simple key-value
-            &om.KV{"message", "OK"},
-        )})
+    status := orderedmap.New(orderedmap.KV{Key: "http", Value: orderedmap.New(
+        orderedmap.KV{Key: "code", Value: 200},
+        orderedmap.KV{Key: "message", Value: "OK"},
+    )})
 
-    response := om.NewOrderedMap().  // now with Setter
+    response := orderedmap.New().
         Set("success", true).
         Set("status", status)
 
-    contentResponse := om.NewOrderedMap(
-        &om.KV{"user", om.NewOrderedMap(
-            &om.KV{"id", 1337},
-            &om.KV{"name", "John Doe"},
-        )})
+    content := orderedmap.New(orderedmap.KV{Key: "user", Value: orderedmap.New(
+        orderedmap.KV{Key: "id", Value: 1337},
+        orderedmap.KV{Key: "name", Value: "John Doe"},
+    )})
 
-    contentResponse.Set("success", false)  // will be skipped in Append(..., false) call
-
-    // append content to response without overwriting existing keys
-    // (second parameter set to false)
-    response.Append(contentResponse, false)
+    response.Append(content, false)
 
     jsonData, _ := json.MarshalIndent(response, "", "  ")
     fmt.Println(string(jsonData))
@@ -59,3 +67,27 @@ func main() {
   }
 }
 ```
+
+## API notes
+
+```go
+om := orderedmap.New()
+
+om.Set("id", 123)
+value := om.Get("id")
+value, ok := om.Lookup("id")
+keys := om.Keys()
+entries := om.Entries()
+
+for key, value := range om.All() {
+    _ = key
+    _ = value
+}
+```
+
+`Get` returns `nil` for missing keys. Use `Lookup` when `nil` is a valid stored value.
+
+`json.Unmarshal` decodes JSON objects as `*orderedmap.OrderedMap` values, including nested objects.
+Numbers are decoded as `json.Number`.
+
+The old `NewOrderedMap`, `GetKeys`, and `GetList` names still exist as compatibility wrappers.
